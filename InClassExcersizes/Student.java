@@ -1,3 +1,5 @@
+package InClassExcersizes;
+
 public class Student 
 {
     String name;

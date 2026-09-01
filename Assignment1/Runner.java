@@ -1,11 +1,13 @@
 package Assignment1;
 
-public class Runner {
+public class Runner 
+{
     String name;
     int age;
     double mileage;
 
-    public Runner(String name, int age, double mileage) {
+    public Runner(String name, int age, double mileage) 
+    {
         this.name = name;
         this.age = age;
         this.mileage = mileage;
