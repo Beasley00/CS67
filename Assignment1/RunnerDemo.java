@@ -25,7 +25,6 @@ public class RunnerDemo {
         System.out.println("\nRunner successfully created! Here is their info:");
         customRunner.introduce();
         
-        // Always close your scanner!
         scanner.close();
     }
 }
