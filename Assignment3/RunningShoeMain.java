@@ -1,3 +1,5 @@
+//Carter Beasley Assignment 3
+
 package Assignment3;
 
 public class RunningShoeMain 
