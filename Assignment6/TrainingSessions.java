@@ -1,4 +1,4 @@
-// Carter Beasley | Assignment 5 | TrainingSessions.java
+// Carter Beasley | Assignment 5 | TrainingSessions.java 
 
 package Assignment6;
 
