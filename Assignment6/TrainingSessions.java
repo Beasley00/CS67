@@ -1,7 +1,5 @@
 // Carter Beasley | Assignment 5 | TrainingSessions.java 
 
-package Assignment6;
-
 public abstract class TrainingSessions 
 {
     // Attributes

@@ -1,7 +1,5 @@
 // Carter Beasley | Assignment 5 | Workout.java
 
-package Assignment6;
-
 public class Workout extends TrainingSessions 
 {
     // Attributes
@@ -24,5 +22,10 @@ public class Workout extends TrainingSessions
     {
         this.workout = workout;
     }
-}
 
+    @Override
+    public String toString() 
+    {
+        return super.toString() + ", Type: Workout, Workout: " + workout;
+    }
+}

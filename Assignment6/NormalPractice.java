@@ -1,7 +1,5 @@
 // Carter Beasley | Assignment 5 | NormalPractice.java
 
-package Assignment6;
-
 public class NormalPractice extends TrainingSessions 
 {
     // Attributes
@@ -67,5 +65,18 @@ public class NormalPractice extends TrainingSessions
     public void setDoubleMileage(double doubleMileage) 
     {
         this.doubleMileage = doubleMileage;
+    }
+
+    @Override
+    public String toString() 
+    {
+        if (hasDoubleRun) 
+        {
+            return super.toString() + ", Type: Normal Practice, Miles: " + miles + ", Double Run: Yes (" + doubleMileage + " miles, Total: " + (miles + doubleMileage) + " miles)";
+        } 
+        else 
+        {
+            return super.toString() + ", Type: Normal Practice, Miles: " + miles + ", Double Run: No";
+        }
     }
 }

@@ -1,7 +1,5 @@
 // Carter Beasley | Assignment 5 | LongRun.java
 
-package Assignment6;
-
 public class LongRun extends TrainingSessions 
 {
     // Attributes
@@ -23,6 +21,12 @@ public class LongRun extends TrainingSessions
     public void setMiles(double miles) 
     {
         this.miles = miles;
+    }
+
+    @Override
+    public String toString() 
+    {
+        return super.toString() + ", Type: Long Run, Miles: " + miles;
     }
 }
 
