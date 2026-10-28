@@ -6,9 +6,11 @@
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Scanner;
 
 public class CreatePokemonDB {
 
@@ -484,10 +486,328 @@ public class CreatePokemonDB {
                 }
             }
             System.out.println("-----------------------------------------------------------------------------------------");
-            System.out.println("Successfully populated pokemon.db with " + count + " Pokemon across Generations 1, 2, and 3!");
+            System.out.println("Successfully populated pokemon.db with " + count + " Pokemon across Generations 1, 2, and 3!\n");
+
+            // Launch interactive searching and filtering
+            Scanner scanner = new Scanner(System.in);
+            startSearchAndFilterMenu(connection, scanner);
 
         } catch (SQLException e) {
             System.out.println(e.getMessage());
+        }
+    }
+
+    // ==========================================================
+    // Interactive Searching and Filtering Functionality
+    // ==========================================================
+
+    private static void startSearchAndFilterMenu(Connection connection, Scanner scanner) {
+        System.out.println("=================================================");
+        System.out.println("    POKEMON SEARCH AND FILTER (Generations 1 - 3)");
+        System.out.println("=================================================");
+
+        boolean running = true;
+        while (running) {
+            printMenu();
+            int choice = getIntInput(scanner, "Choose an option (1-7): ");
+
+            switch (choice) {
+                case 1:
+                    searchByNameOrId(connection, scanner);
+                    break;
+                case 2:
+                    filterByGeneration(connection, scanner);
+                    break;
+                case 3:
+                    filterByType(connection, scanner);
+                    break;
+                case 4:
+                    viewLegendaryPokemon(connection);
+                    break;
+                case 5:
+                    viewTopPokemonByStat(connection, scanner);
+                    break;
+                case 6:
+                    viewDatabaseSummary(connection);
+                    break;
+                case 7:
+                    running = false;
+                    System.out.println("\nExiting search. Pokemon database is ready to use!");
+                    break;
+                default:
+                    System.out.println("Invalid option. Please choose between 1 and 7.");
+            }
+        }
+    }
+
+    private static void printMenu() {
+        System.out.println("\n----------------- SEARCH AND FILTER MENU -----------------");
+        System.out.println("1. Search Pokemon by Name or ID");
+        System.out.println("2. Filter Pokemon by Generation (1, 2, or 3)");
+        System.out.println("3. Filter Pokemon by Type (e.g. Fire, Water, Dragon)");
+        System.out.println("4. View All Legendary / Mythical Pokemon");
+        System.out.println("5. Top 10 Pokemon Ranked by Stat (Total, Attack, Speed...)");
+        System.out.println("6. Database Summary and Generation Statistics");
+        System.out.println("7. Exit");
+        System.out.println("----------------------------------------------------------");
+    }
+
+    private static void searchByNameOrId(Connection conn, Scanner scanner) {
+        System.out.print("\nEnter Pokemon name or Pokedex number: ");
+        String query = scanner.nextLine().trim();
+
+        if (query.isEmpty()) {
+            System.out.println("Search query cannot be empty.");
+            return;
+        }
+
+        String sql;
+        boolean isNumeric = false;
+        int idVal = 0;
+        try {
+            idVal = Integer.parseInt(query);
+            isNumeric = true;
+            sql = "SELECT * FROM Pokemon WHERE id = ? OR name LIKE ? ORDER BY id";
+        } catch (NumberFormatException e) {
+            sql = "SELECT * FROM Pokemon WHERE name LIKE ? ORDER BY id";
+        }
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (isNumeric) {
+                ps.setInt(1, idVal);
+                ps.setString(2, "%" + query + "%");
+            } else {
+                ps.setString(1, "%" + query + "%");
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                printPokemonDetailCards(rs);
+            }
+        } catch (SQLException e) {
+            System.out.println("Search error: " + e.getMessage());
+        }
+    }
+
+    private static void filterByGeneration(Connection conn, Scanner scanner) {
+        int gen = getIntInput(scanner, "\nEnter Generation (1, 2, or 3): ");
+        if (gen < 1 || gen > 3) {
+            System.out.println("Invalid generation. Must be 1, 2, or 3.");
+            return;
+        }
+
+        String sql = "SELECT * FROM Pokemon WHERE generation = ? ORDER BY id";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, gen);
+            try (ResultSet rs = ps.executeQuery()) {
+                System.out.println("\n=== Generation " + gen + " Pokemon ===");
+                printPokemonTable(rs);
+            }
+        } catch (SQLException e) {
+            System.out.println("Filter error: " + e.getMessage());
+        }
+    }
+
+    private static void filterByType(Connection conn, Scanner scanner) {
+        System.out.print("\nEnter type (e.g. Fire, Water, Grass, Dragon): ");
+        String type = scanner.nextLine().trim();
+
+        if (type.isEmpty()) {
+            System.out.println("Type cannot be empty.");
+            return;
+        }
+
+        String sql = "SELECT * FROM Pokemon WHERE LOWER(type1) = LOWER(?) OR LOWER(type2) = LOWER(?) ORDER BY id";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, type);
+            ps.setString(2, type);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                String title = type.substring(0, 1).toUpperCase() + type.substring(1).toLowerCase();
+                System.out.println("\n=== " + title + "-Type Pokemon ===");
+                printPokemonTable(rs);
+            }
+        } catch (SQLException e) {
+            System.out.println("Filter error: " + e.getMessage());
+        }
+    }
+
+    private static void viewLegendaryPokemon(Connection conn) {
+        String sql = "SELECT * FROM Pokemon WHERE is_legendary = true ORDER BY id";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            System.out.println("\n=== Legendary and Mythical Pokemon (Generations 1 - 3) ===");
+            printPokemonTable(rs);
+        } catch (SQLException e) {
+            System.out.println("Query error: " + e.getMessage());
+        }
+    }
+
+    private static void viewTopPokemonByStat(Connection conn, Scanner scanner) {
+        System.out.println("\nSelect Stat to Rank By:");
+        System.out.println("1. Total Base Stats");
+        System.out.println("2. Attack");
+        System.out.println("3. Defense");
+        System.out.println("4. Special Attack");
+        System.out.println("5. Special Defense");
+        System.out.println("6. Speed");
+        System.out.println("7. HP");
+
+        int statChoice = getIntInput(scanner, "Choose stat (1-7): ");
+        String statColumn;
+        switch (statChoice) {
+            case 1: statColumn = "total"; break;
+            case 2: statColumn = "attack"; break;
+            case 3: statColumn = "defense"; break;
+            case 4: statColumn = "sp_attack"; break;
+            case 5: statColumn = "sp_defense"; break;
+            case 6: statColumn = "speed"; break;
+            case 7: statColumn = "hp"; break;
+            default:
+                System.out.println("Invalid selection.");
+                return;
+        }
+
+        String sql = "SELECT * FROM Pokemon ORDER BY " + statColumn + " DESC LIMIT 10";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            System.out.println("\n=== Top 10 Pokemon Ranked by " + statColumn.toUpperCase() + " ===");
+            printPokemonTable(rs);
+        } catch (SQLException e) {
+            System.out.println("Query error: " + e.getMessage());
+        }
+    }
+
+    private static void viewDatabaseSummary(Connection conn) {
+        String countSql = "SELECT generation, COUNT(*) AS count, " +
+                          "ROUND(AVG(hp), 1) AS avg_hp, " +
+                          "ROUND(AVG(attack), 1) AS avg_atk, " +
+                          "ROUND(AVG(defense), 1) AS avg_def, " +
+                          "ROUND(AVG(total), 1) AS avg_tot " +
+                          "FROM Pokemon GROUP BY generation ORDER BY generation";
+
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(countSql)) {
+
+            System.out.println("\n================= GENERATION SUMMARY =================");
+            System.out.printf("%-10s | %-7s | %-8s | %-8s | %-8s | %-8s%n",
+                    "Gen", "Count", "Avg HP", "Avg Atk", "Avg Def", "Avg Total");
+            System.out.println("------------------------------------------------------");
+
+            int totalCount = 0;
+            while (rs.next()) {
+                int gen = rs.getInt("generation");
+                int count = rs.getInt("count");
+                totalCount += count;
+                double hp = rs.getDouble("avg_hp");
+                double atk = rs.getDouble("avg_atk");
+                double def = rs.getDouble("avg_def");
+                double tot = rs.getDouble("avg_tot");
+
+                System.out.printf("Gen %-6d | %-7d | %-8.1f | %-8.1f | %-8.1f | %-8.1f%n",
+                        gen, count, hp, atk, def, tot);
+            }
+            System.out.println("------------------------------------------------------");
+            System.out.println("Total Pokemon in Database: " + totalCount);
+
+        } catch (SQLException e) {
+            System.out.println("Summary error: " + e.getMessage());
+        }
+    }
+
+    private static void printPokemonTable(ResultSet rs) throws SQLException {
+        System.out.println("--------------------------------------------------------------------------------------------------------");
+        System.out.printf("%-5s | %-15s | %-4s | %-16s | %-5s | %-5s | %-5s | %-6s | %-6s | %-5s | %-5s%n",
+                "ID", "Name", "Gen", "Type(s)", "HP", "Atk", "Def", "Sp.Atk", "Sp.Def", "Speed", "Total");
+        System.out.println("--------------------------------------------------------------------------------------------------------");
+
+        int count = 0;
+        while (rs.next()) {
+            count++;
+            int id = rs.getInt("id");
+            String name = rs.getString("name");
+            int gen = rs.getInt("generation");
+            String type1 = rs.getString("type1");
+            String type2 = rs.getString("type2");
+            String types = (type2 != null) ? type1 + "/" + type2 : type1;
+            int hp = rs.getInt("hp");
+            int atk = rs.getInt("attack");
+            int def = rs.getInt("defense");
+            int spa = rs.getInt("sp_attack");
+            int spd = rs.getInt("sp_defense");
+            int spe = rs.getInt("speed");
+            int tot = rs.getInt("total");
+
+            System.out.printf("#%-4d | %-15s | %-4d | %-16s | %-5d | %-5d | %-5d | %-6d | %-6d | %-5d | %-5d%n",
+                    id, name, gen, types, hp, atk, def, spa, spd, spe, tot);
+        }
+
+        if (count == 0) {
+            System.out.println("No Pokemon found matching your criteria.");
+        } else {
+            System.out.println("--------------------------------------------------------------------------------------------------------");
+            System.out.println("Found " + count + " Pokemon.");
+        }
+    }
+
+    private static void printPokemonDetailCards(ResultSet rs) throws SQLException {
+        int count = 0;
+        while (rs.next()) {
+            count++;
+            int id = rs.getInt("id");
+            String name = rs.getString("name");
+            int gen = rs.getInt("generation");
+            String type1 = rs.getString("type1");
+            String type2 = rs.getString("type2");
+            String types = (type2 != null) ? type1 + " / " + type2 : type1;
+            String species = rs.getString("species");
+            int hp = rs.getInt("hp");
+            int atk = rs.getInt("attack");
+            int def = rs.getInt("defense");
+            int spa = rs.getInt("sp_attack");
+            int spd = rs.getInt("sp_defense");
+            int spe = rs.getInt("speed");
+            int tot = rs.getInt("total");
+            double height = rs.getDouble("height_m");
+            double weight = rs.getDouble("weight_kg");
+            boolean isLeg = rs.getBoolean("is_legendary");
+
+            System.out.println("\n+--------------------------------------------------+");
+            System.out.printf("| #%-3d %-35s %s|%n", id, name, isLeg ? "[LEGENDARY] " : "            ");
+            System.out.printf("| Gen %-2d | %-40s |%n", gen, species != null ? species : "");
+            System.out.printf("| Type: %-42s |%n", types);
+            System.out.printf("| Height: %-4.1f m | Weight: %-6.1f kg                 |%n", height, weight);
+            System.out.println("+--------------------------------------------------+");
+            System.out.printf("| HP:        %-3d %-32s |%n", hp, makeStatBar(hp));
+            System.out.printf("| Attack:    %-3d %-32s |%n", atk, makeStatBar(atk));
+            System.out.printf("| Defense:   %-3d %-32s |%n", def, makeStatBar(def));
+            System.out.printf("| Sp. Atk:   %-3d %-32s |%n", spa, makeStatBar(spa));
+            System.out.printf("| Sp. Def:   %-3d %-32s |%n", spd, makeStatBar(spd));
+            System.out.printf("| Speed:     %-3d %-32s |%n", spe, makeStatBar(spe));
+            System.out.println("+--------------------------------------------------+");
+            System.out.printf("| BASE STAT TOTAL: %-31d |%n", tot);
+            System.out.println("+--------------------------------------------------+");
+        }
+
+        if (count == 0) {
+            System.out.println("No Pokemon found matching your query.");
+        }
+    }
+
+    private static String makeStatBar(int value) {
+        int maxBlocks = 20;
+        int filled = Math.min(maxBlocks, Math.max(1, (int) Math.round((value / 160.0) * maxBlocks)));
+        return "[" + "=".repeat(filled) + " ".repeat(maxBlocks - filled) + "]";
+    }
+
+    private static int getIntInput(Scanner scanner, String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String input = scanner.nextLine().trim();
+            try {
+                return Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a valid number.");
+            }
         }
     }
 }
